@@ -1,2 +1,3 @@
-pub mod lock_and_fractionalize;
-pub mod init_fractionalize;
+pub use fractionalize_nft::*;
+
+pub mod fractionalize_nft;
