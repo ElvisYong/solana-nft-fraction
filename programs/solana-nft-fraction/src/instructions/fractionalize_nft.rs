@@ -10,12 +10,10 @@ pub fn fractionalize_nft_handler(
 ) -> Result<()> {
     let metaplex_program = mpl_token_metadata::programs::MPL_TOKEN_METADATA_ID;
 
-    // TODO: Fix this 
-    let signer_seeds = [&[ctx.bumps["signer"]]];
-
+    let bump = ctx.bumps.fraction_account;
     let nft_metadata_acc = Metadata::try_from(&ctx.accounts.nft_metadata_account.to_account_info())?;
 
-    CreateV1CpiBuilder::new(metaplex_program)
+    CreateV1CpiBuilder::new(&ctx.accounts.token_program.to_account_info())
     .metadata(&ctx.accounts.fraction_token_metadata.to_account_info())
     .mint(&ctx.accounts.token_mint.to_account_info(), true)
     .name(format!("{} fractions", nft_metadata_acc.name))
@@ -30,7 +28,7 @@ pub fn fractionalize_nft_handler(
     .sysvar_instructions(&ctx.accounts.sysvar_instructions.to_account_info())
     .spl_token_program(&ctx.accounts.token_program.to_account_info())
     .seller_fee_basis_points(0) // Fee to creators of this token
-    .invoke_signed(&[&signer_seeds])?;
+    .invoke_signed(&[&[&[bump]]])?;
 
     // Transfer NFT to vault
     token::transfer(
