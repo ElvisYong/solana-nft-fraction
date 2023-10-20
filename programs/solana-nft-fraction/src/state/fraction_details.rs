@@ -2,6 +2,10 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct FractionDetails {
+    /// The nft mint for the fractionalized NFT. (32)
+    pub nft_mint: Pubkey,
+    /// The spl token mint for the fractionalized NFT. (32)
+    pub spl_token_mint: Pubkey,
     /// The authority that can withdraw the NFT from the vault. (32)
     pub withdraw_authority: Pubkey,
     /// The number of shares that exist for this NFT. (8)
@@ -9,5 +13,5 @@ pub struct FractionDetails {
 }
 
 impl FractionDetails {
-    pub const LEN: usize = 32 + 8;
+    pub const LEN: usize = 32 + 32 + 32 + 8;
 }

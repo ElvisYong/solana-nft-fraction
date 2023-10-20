@@ -43,7 +43,10 @@ pub fn fractionalize_nft_handler(
     msg!("NFT transferred to vault");
 
     // Freeze the NFT in the vault
+
     // Set the withdraw authority of the vault to the signer
+
+    // Send created spl token to the user
 
     Ok(())
 }
