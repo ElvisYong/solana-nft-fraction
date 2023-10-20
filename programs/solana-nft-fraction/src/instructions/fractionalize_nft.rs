@@ -2,14 +2,12 @@ use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{Mint, TokenAccount, Token, self, Transfer};
 use mpl_token_metadata::{instructions::CreateV1CpiBuilder, accounts::Metadata, types::TokenStandard};
 
-use crate::{state::fraction_details::FractionDetails};
+use crate::state::fraction_details::FractionDetails;
 
 pub fn fractionalize_nft_handler(
     ctx: Context<FractionalizeNft>,
     shares_amount: u64,
 ) -> Result<()> {
-    let metaplex_program = mpl_token_metadata::programs::MPL_TOKEN_METADATA_ID;
-
     let bump = ctx.bumps.fraction_account;
     let nft_metadata_acc = Metadata::try_from(&ctx.accounts.nft_metadata_account.to_account_info())?;
 

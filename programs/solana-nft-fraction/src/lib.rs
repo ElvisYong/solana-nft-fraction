@@ -11,7 +11,7 @@ declare_id!("2FVnCxEJWcuxBVBZSphHPhLt3LyuXtbpDHubm4rXu1tP");
 pub mod solana_nft_fraction {
     use super::*;
 
-    pub fn fractionalize_nft(ctx: Context<FractionalizeNft>) -> Result<()> {
-        fractionalize_nft_handler(ctx)
+    pub fn fractionalize_nft(ctx: Context<FractionalizeNft>, share_amount: u64) -> Result<()> {
+        fractionalize_nft_handler(ctx, share_amount)
     }
 }
