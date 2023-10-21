@@ -8,6 +8,13 @@ pub fn fractionalize_nft_handler(
     ctx: Context<FractionalizeNft>,
     shares_amount: u64,
 ) -> Result<()> {
+    let fraction_account = &mut ctx.accounts.fraction_account;
+    fraction_account.nft_vault_account = ctx.accounts.nft_vault.key();
+    fraction_account.nft_mint = ctx.accounts.nft_mint.key();
+    fraction_account.spl_token_mint = ctx.accounts.token_mint.key();
+    fraction_account.withdraw_authority = ctx.accounts.user.key();
+    fraction_account.shares_amount = shares_amount;
+
     let bump = ctx.bumps.fraction_account;
     let nft_metadata_acc = Metadata::try_from(&ctx.accounts.nft_metadata_account.to_account_info())?;
 
