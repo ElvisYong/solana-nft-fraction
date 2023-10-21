@@ -68,7 +68,7 @@ pub struct FractionalizeNft<'info> {
         space = FractionDetails::LEN,
         payer = user, 
         seeds = [
-            b"fraction_account", 
+            b"fraction", 
             nft_mint.key().as_ref(),
             ],
         bump
