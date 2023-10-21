@@ -6,6 +6,7 @@ import { Amount, Signer, UmiError, generateRandomString, generateSigner, percent
 import {
   createV1,
   fetchDigitalAsset,
+  findMetadataPda,
   mintV1,
   mplTokenMetadata,
   TokenStandard,
@@ -26,12 +27,12 @@ const umi = createUmi("https://api.devnet.solana.com")
   .use(walletAdapterIdentity(signer))
   .use(mplTokenMetadata());
 
-// Our Nft Mint
-const mint = generateSigner(umi)
 
 const createAndMintNft = async (name: string, uri: string) => {
+  // Our Nft Mint
+  const mint = generateSigner(umi)
 
-  // First create the metadata account
+  // // First create the metadata account
   let createTx = await createV1(umi, {
     mint,
     authority: umi.identity,
@@ -47,6 +48,7 @@ const createAndMintNft = async (name: string, uri: string) => {
 
   // Then mint the NFT to the authority
   let mintTx = await mintV1(umi, {
+    // mint: mint.publicKey,
     mint: mint.publicKey,
     authority: umi.identity,
     amount: 1,
@@ -56,17 +58,15 @@ const createAndMintNft = async (name: string, uri: string) => {
 
   let mint_hash = base58.deserialize(mintTx.signature);
   console.log("Minted NFT", mint_hash);
+
+  return mint.publicKey
 }
 
 describe("solana-nft-fraction", () => {
-  // Configure the client to use the local cluster.
-  test("Creates and mints an NFT", async () => {
-    createAndMintNft("TestNft", "https://lh3.googleusercontent.com/22KjKODGuOPpyD9YgHnZpWPbt1-IhiEpPTkSbjHIa5sUjeUmzdG3UiO_dy1UKEUf4Iqc7kG5uBhW5JKYofyVGU4GUeApdsqplmo")
-  });
+  it("Creates nft and a fraction nft token", async () => {
+    let nftMint = await createAndMintNft("TestNFT", "https://www.stockphotosecrets.com/wp-content/uploads/2018/08/hide-the-pain-stockphoto-840x560.jpg")
 
-
-  test("Creates a fraction nft token", async () => {
-    const digitalAsset = await fetchDigitalAsset(umi, mint.publicKey);
+    const digitalAsset = await fetchDigitalAsset(umi, publicKey(nftMint));
 
     const [fractionPDA, fractionBump] = await anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from(anchor.utils.bytes.utf8.encode("fraction")), publicKeyBytes(digitalAsset.mint.publicKey)],
@@ -77,8 +77,11 @@ describe("solana-nft-fraction", () => {
       [Buffer.from(anchor.utils.bytes.utf8.encode("nft_vault")), publicKeyBytes(digitalAsset.mint.publicKey)],
       program.programId
     );
-    
+
     const tokenMint = await generateSigner(umi);
+    const [fractionMetadataAccount, fractionMetadataAccountBump] = findMetadataPda(umi, {
+      mint: tokenMint.publicKey
+    });
 
     const ixArgs = {
       shareAmount: new anchor.BN(10),
@@ -92,12 +95,14 @@ describe("solana-nft-fraction", () => {
       nftAccount: digitalAsset.publicKey,
       nftMint: digitalAsset.mint.publicKey,
       nftMetadataAccount: digitalAsset.metadata.publicKey,
+      fractionTokenMetadata: fractionMetadataAccount,
       tokenMint: tokenMint.publicKey,
       tokenProgram: TOKEN_PROGRAM_ID,
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       systemProgram: SystemProgram.programId,
     }
 
-    program.methods.fractionalizeNft(ixArgs.shareAmount).accounts(ixAccounts)
+    let transaction = await program.methods.fractionalizeNft(ixArgs.shareAmount).accounts(ixAccounts).rpc();
+    console.log("Successfully fractionalized NFT ", transaction);
   });
 });
