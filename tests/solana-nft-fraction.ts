@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { SolanaNftFraction } from "../target/types/solana_nft_fraction";
-import { Keypair, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram } from '@solana/web3.js';
+import { Keypair, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram } from '@solana/web3.js';
 import { Amount, Signer, UmiError, generateRandomString, generateSigner, percentAmount, publicKey, publicKeyBytes, signerPayer, transactionBuilder } from '@metaplex-foundation/umi'
 import {
   createV1,
@@ -48,7 +48,6 @@ const createAndMintNft = async (name: string, uri: string) => {
 
   // Then mint the NFT to the authority
   let mintTx = await mintV1(umi, {
-    // mint: mint.publicKey,
     mint: mint.publicKey,
     authority: umi.identity,
     amount: 1,
@@ -63,10 +62,12 @@ const createAndMintNft = async (name: string, uri: string) => {
 }
 
 describe("solana-nft-fraction", () => {
-  it("Creates nft and a fraction nft token", async () => {
-    let nftMint = await createAndMintNft("TestNFT", "https://www.stockphotosecrets.com/wp-content/uploads/2018/08/hide-the-pain-stockphoto-840x560.jpg")
+  // it("Create and mint NFT", async () => {
+  //   await createAndMintNft("TestNFT", "https://www.stockphotosecrets.com/wp-content/uploads/2018/08/hide-the-pain-stockphoto-840x560.jpg")
+  // });
 
-    const digitalAsset = await fetchDigitalAsset(umi, publicKey(nftMint));
+  it("Creates nft and a fraction nft token", async () => {
+    const digitalAsset = await fetchDigitalAsset(umi, publicKey("45AhFUBQga63SwLbnURMHcwjG4Njx2zBRevaMPcRXYn2"));
 
     const [fractionPDA, fractionBump] = await anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from(anchor.utils.bytes.utf8.encode("fraction")), publicKeyBytes(digitalAsset.mint.publicKey)],
