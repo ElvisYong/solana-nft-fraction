@@ -23,7 +23,6 @@ const umi = createUmi("https://api.devnet.solana.com")
   .use(walletAdapterIdentity(signer))
   .use(mplTokenMetadata());
 
-
 const createAndMintNft = async (name: string, uri: string) => {
   // We generate a new Mint for the NFT.
   const mint = generateSigner(umi)
@@ -57,6 +56,11 @@ const createAndMintNft = async (name: string, uri: string) => {
 
 describe("solana-nft-fraction", () => {
   // Configure the client to use the local cluster.
-  createAndMintNft("TestNft", "https://lh3.googleusercontent.com/22KjKODGuOPpyD9YgHnZpWPbt1-IhiEpPTkSbjHIa5sUjeUmzdG3UiO_dy1UKEUf4Iqc7kG5uBhW5JKYofyVGU4GUeApdsqplmo")
+  test("Creates and mints an NFT", async () => {
+    createAndMintNft("TestNft", "https://lh3.googleusercontent.com/22KjKODGuOPpyD9YgHnZpWPbt1-IhiEpPTkSbjHIa5sUjeUmzdG3UiO_dy1UKEUf4Iqc7kG5uBhW5JKYofyVGU4GUeApdsqplmo")
+  });
 
+  test("Creates a fraction nft token", async() => {
+    // program.methods.fractionalizeNft(10).accounts()
+  });
 });
