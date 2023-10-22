@@ -103,7 +103,48 @@ describe("solana-nft-fraction", () => {
       systemProgram: SystemProgram.programId,
     }
 
-    let transaction = await program.methods.fractionalizeNft(ixArgs.shareAmount).accounts(ixAccounts).rpc();
-    console.log("Successfully fractionalized NFT ", transaction);
+    let ix = await program.methods.fractionalizeNft(ixArgs.shareAmount).accounts(ixAccounts).instruction();
+
+    // Step 1 - Fetch the latest blockhash
+    let latestBlockhash = await provider.connection.getLatestBlockhash("confirmed");
+    console.log(
+      "   ✅ - Fetched latest blockhash. Last Valid Height:",
+      latestBlockhash.lastValidBlockHeight
+    );
+
+    // Step 2 - Generate Transaction Message
+    const messageV0 = new anchor.web3.TransactionMessage({
+      payerKey: provider.wallet.publicKey,
+      instructions: [ix],
+      recentBlockhash: latestBlockhash.blockhash,
+    }).compileToV0Message();
+    const transaction = new anchor.web3.VersionedTransaction(messageV0);
+    console.log("   ✅ - Compiled Transaction Message");
+
+    // Step 3 - Sign your transaction with the required `Signers`
+    provider.wallet.signTransaction(transaction);
+    console.log("   ✅ - Transaction Signed");
+
+    const txid = await provider.connection.sendTransaction(transaction, {
+      maxRetries: 5,
+    });
+    console.log("   ✅ - Transaction sent to network");
+
+
+    const confirmation = await provider.connection.confirmTransaction({
+      signature: txid,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    });
+
+    if (confirmation.value.err) {
+      throw new Error(
+        `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`
+      );
+    }
+
+    // Log the tx id
+    console.log("🎉 Transaction Succesfully Confirmed!");
+    console.log("Transaction executed:", txid);
   });
 });
