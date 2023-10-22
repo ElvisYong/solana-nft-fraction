@@ -1,20 +1,22 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { SolanaNftFraction } from "../target/types/solana_nft_fraction";
-import { Keypair, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram } from '@solana/web3.js';
-import { Amount, Signer, UmiError, generateRandomString, generateSigner, percentAmount, publicKey, publicKeyBytes, signerPayer, transactionBuilder } from '@metaplex-foundation/umi'
+import { Keypair, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Amount, Signer, TransactionBuilder, UmiError, generateRandomString, generateSigner, percentAmount, publicKey, publicKeyBytes, signTransaction, signerPayer, transactionBuilder } from '@metaplex-foundation/umi'
 import {
   createV1,
   fetchDigitalAsset,
   findMetadataPda,
+  getMplTokenMetadataProgramId,
   mintV1,
+  MPL_TOKEN_METADATA_PROGRAM_ID,
   mplTokenMetadata,
   TokenStandard,
 } from '@metaplex-foundation/mpl-token-metadata'
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { base58 } from "@metaplex-foundation/umi/serializers";
-import { TOKEN_PROGRAM_ID, createAssociatedTokenAccount } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, createAssociatedTokenAccount, createMint } from "@solana/spl-token";
 
 let provider = anchor.AnchorProvider.env();
 anchor.setProvider(provider);
@@ -67,7 +69,7 @@ describe("solana-nft-fraction", () => {
   // });
 
   it("Creates nft and a fraction nft token", async () => {
-    const digitalAsset = await fetchDigitalAsset(umi, publicKey("45AhFUBQga63SwLbnURMHcwjG4Njx2zBRevaMPcRXYn2"));
+    const digitalAsset = await fetchDigitalAsset(umi, publicKey("7Y7pLihtSvwFVCkrXKCnwu5nv31gYK4uNmBENfjiT6wu"));
 
     const [fractionPDA, fractionBump] = await anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from(anchor.utils.bytes.utf8.encode("fraction")), publicKeyBytes(digitalAsset.mint.publicKey)],
@@ -79,9 +81,10 @@ describe("solana-nft-fraction", () => {
       program.programId
     );
 
-    const tokenMint = await generateSigner(umi);
+    const tokenMint = anchor.web3.Keypair.generate();
+
     const [fractionMetadataAccount, fractionMetadataAccountBump] = findMetadataPda(umi, {
-      mint: tokenMint.publicKey
+      mint: publicKey(tokenMint.publicKey)
     });
 
     const ixArgs = {
@@ -89,59 +92,33 @@ describe("solana-nft-fraction", () => {
       fractionAccount: fractionPDA,
     }
 
+    console.log("nftAccount: ", digitalAsset.publicKey);
+    console.log("nftMint: ", digitalAsset.mint.publicKey);
+    console.log("nftMetadataAccount: ", digitalAsset.metadata.publicKey);
+
     const ixAccounts = {
-      user: umi.identity.publicKey,
+      user: provider.wallet.publicKey,
       fractionAccount: fractionPDA,
       nftVault: nftVault,
       nftAccount: digitalAsset.publicKey,
       nftMint: digitalAsset.mint.publicKey,
       nftMetadataAccount: digitalAsset.metadata.publicKey,
       fractionTokenMetadata: fractionMetadataAccount,
-      tokenMint: tokenMint.publicKey,
+      tokenMint: tokenMint.publicKey, // This is the issue
+      tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       systemProgram: SystemProgram.programId,
     }
 
-    let ix = await program.methods.fractionalizeNft(ixArgs.shareAmount).accounts(ixAccounts).instruction();
-
-    // Step 1 - Fetch the latest blockhash
-    let latestBlockhash = await provider.connection.getLatestBlockhash("confirmed");
-    console.log(
-      "   ✅ - Fetched latest blockhash. Last Valid Height:",
-      latestBlockhash.lastValidBlockHeight
-    );
-
-    // Step 2 - Generate Transaction Message
-    const messageV0 = new anchor.web3.TransactionMessage({
-      payerKey: provider.wallet.publicKey,
-      instructions: [ix],
-      recentBlockhash: latestBlockhash.blockhash,
-    }).compileToV0Message();
-    const transaction = new anchor.web3.VersionedTransaction(messageV0);
-    console.log("   ✅ - Compiled Transaction Message");
-
-    // Step 3 - Sign your transaction with the required `Signers`
-    provider.wallet.signTransaction(transaction);
-    console.log("   ✅ - Transaction Signed");
-
-    const txid = await provider.connection.sendTransaction(transaction, {
-      maxRetries: 5,
-    });
-    console.log("   ✅ - Transaction sent to network");
-
-
-    const confirmation = await provider.connection.confirmTransaction({
-      signature: txid,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    });
-
-    if (confirmation.value.err) {
-      throw new Error(
-        `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`
-      );
-    }
+    // This is good mainly for testing however we want to log the steps below
+    let latest_blockhash = await provider.connection.getLatestBlockhash("confirmed");
+    let wallet = provider.wallet as anchor.Wallet;
+    let txid = await program.methods
+      .fractionalizeNft(ixArgs.shareAmount)
+      .accounts(ixAccounts)
+      .signers([wallet.payer, tokenMint])
+      .rpc();
 
     // Log the tx id
     console.log("🎉 Transaction Succesfully Confirmed!");

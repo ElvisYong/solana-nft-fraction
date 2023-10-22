@@ -15,5 +15,6 @@ pub struct FractionDetails {
 }
 
 impl FractionDetails {
-    pub const LEN: usize = 32 + 32 + 32 + 32 + 8;
+    /// First 8 is the discrimnator
+    pub const LEN: usize = 8 + 32 + 32 + 32 + 32 + 8;
 }

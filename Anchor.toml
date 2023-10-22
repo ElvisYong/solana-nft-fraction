@@ -5,7 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-solana_nft_fraction = "2FVnCxEJWcuxBVBZSphHPhLt3LyuXtbpDHubm4rXu1tP"
+solana_nft_fraction = "796GNwLYHzPyjcR5T6vhcge7RMfYr7kE8QDFBN23hdvm"
 
 [registry]
 url = "https://api.apr.dev"
