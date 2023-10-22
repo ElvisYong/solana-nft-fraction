@@ -104,7 +104,7 @@ describe("solana-nft-fraction", () => {
       nftMint: digitalAsset.mint.publicKey,
       nftMetadataAccount: digitalAsset.metadata.publicKey,
       fractionTokenMetadata: fractionMetadataAccount,
-      tokenMint: tokenMint.publicKey, // This is the issue
+      tokenMint: tokenMint.publicKey, 
       tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -112,7 +112,6 @@ describe("solana-nft-fraction", () => {
     }
 
     // This is good mainly for testing however we want to log the steps below
-    let latest_blockhash = await provider.connection.getLatestBlockhash("confirmed");
     let wallet = provider.wallet as anchor.Wallet;
     let txid = await program.methods
       .fractionalizeNft(ixArgs.shareAmount)

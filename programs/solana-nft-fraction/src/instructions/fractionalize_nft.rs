@@ -16,26 +16,26 @@ pub fn fractionalize_nft_handler(
     fraction_account.shares_amount = shares_amount;
     msg!("Created fraction account");
 
-    let bump = ctx.bumps.fraction_account;
+    let signer_seeds = [&[ctx.bumps.fraction_account], ctx.accounts.nft_mint.key.as_ref()];
     let nft_metadata_acc = Metadata::try_from(&ctx.accounts.nft_metadata_account.to_account_info())?;
 
     msg!("Creating NFT Fraction Token");
-    CreateV1CpiBuilder::new(&ctx.accounts.token_metadata_program.to_account_info())
-    .metadata(&ctx.accounts.fraction_token_metadata.to_account_info())
-    .mint(&ctx.accounts.token_mint.to_account_info(), true)
+    CreateV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
+    .metadata(&ctx.accounts.fraction_token_metadata)
+    .mint(&ctx.accounts.token_mint, true)
     .name(format!("{} fractions", nft_metadata_acc.name))
     .uri(nft_metadata_acc.uri) // TODO: Add uri
     .symbol(format!("{}-fraction", nft_metadata_acc.symbol))
-    .payer(&ctx.accounts.user.to_account_info())
-    .update_authority(&ctx.accounts.fraction_account.to_account_info(), true)
-    .authority(&ctx.accounts.user.to_account_info())
+    .payer(&ctx.accounts.user)
+    .update_authority(&ctx.accounts.user, true)
+    .authority(&ctx.accounts.user)
     .token_standard(TokenStandard::Fungible)
     .print_supply(mpl_token_metadata::types::PrintSupply::Limited(shares_amount))
-    .system_program(&ctx.accounts.system_program.to_account_info())
-    .sysvar_instructions(&ctx.accounts.sysvar_instructions.to_account_info())
-    .spl_token_program(&ctx.accounts.token_program.to_account_info())
+    .system_program(&ctx.accounts.system_program)
+    .sysvar_instructions(&ctx.accounts.sysvar_instructions)
+    .spl_token_program(&ctx.accounts.token_program)
     .seller_fee_basis_points(0) // Fee to creators of this token
-    .invoke_signed(&[&[&[bump]]])?;
+    .invoke_signed(&[&signer_seeds])?;
 
     
     msg!("Fraction token created");
