@@ -16,7 +16,8 @@ import {
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { base58 } from "@metaplex-foundation/umi/serializers";
-import { TOKEN_PROGRAM_ID, createAssociatedTokenAccount, createMint } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, createAssociatedTokenAccount, createMint, getAssociatedTokenAddress } from "@solana/spl-token";
+import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 
 let provider = anchor.AnchorProvider.env();
 anchor.setProvider(provider);
@@ -96,6 +97,8 @@ describe("solana-nft-fraction", () => {
     console.log("nftMint: ", digitalAsset.mint.publicKey);
     console.log("nftMetadataAccount: ", digitalAsset.metadata.publicKey);
 
+    let userTokenAccount = await getAssociatedTokenAddress(tokenMint.publicKey, provider.wallet.publicKey);
+
     const ixAccounts = {
       user: provider.wallet.publicKey,
       fractionAccount: fractionPDA,
@@ -104,9 +107,11 @@ describe("solana-nft-fraction", () => {
       nftMint: digitalAsset.mint.publicKey,
       nftMetadataAccount: digitalAsset.metadata.publicKey,
       fractionTokenMetadata: fractionMetadataAccount,
+      userTokenAccount: userTokenAccount,
       tokenMint: tokenMint.publicKey, 
       tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
+      ataProgram: ASSOCIATED_PROGRAM_ID,
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       systemProgram: SystemProgram.programId,
     }

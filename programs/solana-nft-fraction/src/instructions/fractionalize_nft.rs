@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::{token::{TokenAccount, Token}, metadata::Metadata as TokenMetadata};
-use mpl_token_metadata::{instructions::CreateV1CpiBuilder, types::TokenStandard, accounts::Metadata};
+use anchor_spl::{token::{TokenAccount, Token}, metadata::Metadata as TokenMetadata, associated_token::AssociatedToken};
+use mpl_token_metadata::{instructions::{CreateV1CpiBuilder, MintV1CpiBuilder}, types::TokenStandard, accounts::Metadata};
 
 use crate::state::fraction_details::FractionDetails;
 
@@ -24,10 +24,19 @@ pub fn fractionalize_nft_handler(
     let token_name = format!("{}-fx", nft_metadata_acc.name.trim_matches(char::from(0)));
     let token_symbol = format!("{}-fx", nft_metadata_acc.symbol.trim_matches(char::from(0)));
 
-    msg!("token_name: {}", token_name);
-    msg!("token_symbol: {}", token_symbol);
+    // Print all the accounts
+    msg!("User: {}", ctx.accounts.user.key());
+    msg!("Fraction Account: {}", ctx.accounts.fraction_account.key());
+    msg!("NFT Vault: {}", ctx.accounts.nft_vault.key());
+    msg!("NFT Account: {}", ctx.accounts.nft_account.key());
+    msg!("NFT Mint: {}", ctx.accounts.nft_mint.key());
+    msg!("NFT Metadata: {}", ctx.accounts.nft_metadata_account.to_account_info().key());
+    msg!("Fraction Token Metadata: {}", ctx.accounts.fraction_token_metadata.to_account_info().key());
+    msg!("User Token Account: {}", ctx.accounts.user_token_account.to_account_info().key());
 
-    msg!("Creating NFT Fraction Token");
+
+    msg!("Creating NFT Fraction Token...");
+    // Careful of authority, we might need to create a pda authority just for signing as program
     CreateV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
     .metadata(&ctx.accounts.fraction_token_metadata)
     .mint(&ctx.accounts.token_mint, true)
@@ -44,9 +53,25 @@ pub fn fractionalize_nft_handler(
     .spl_token_program(&ctx.accounts.token_program)
     .seller_fee_basis_points(0) // Fee to creators of this token
     .invoke_signed(&[&signer_seeds])?;
-
-    
     msg!("Fraction token created");
+
+    msg!("Minting fraction token...");
+    // Careful of authority, we might need to create a pda authority just for signing as program
+    // For now we will use the user as the authority
+    MintV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
+        .token(&ctx.accounts.user_token_account)
+        .token_owner(Some(&&ctx.accounts.user))
+        .metadata(&ctx.accounts.fraction_token_metadata)
+        .mint(&ctx.accounts.token_mint)
+        .authority(&ctx.accounts.user)
+        .payer(&ctx.accounts.user)
+        .system_program(&ctx.accounts.system_program)
+        .sysvar_instructions(&ctx.accounts.sysvar_instructions)
+        .spl_token_program(&ctx.accounts.token_program)
+        .spl_ata_program(&ctx.accounts.ata_program)
+        .amount(shares_amount)
+        .invoke_signed(&[&signer_seeds])?;
+    msg!("Fraction token minted to: {}", ctx.accounts.user_token_account.key());
 
     // msg!("Transfering NFT to vault");
     // Transfer NFT to vault
@@ -123,6 +148,11 @@ pub struct FractionalizeNft<'info> {
     #[account(mut)]
     pub fraction_token_metadata: UncheckedAccount<'info>,
 
+    /// Destination token account
+    /// CHECK: Account checked in CPI
+    #[account(mut)]
+    pub user_token_account: UncheckedAccount<'info>,
+
     /// The account will be initialized if necessary.
     ///
     /// Must be a signer if:
@@ -138,6 +168,8 @@ pub struct FractionalizeNft<'info> {
     
     /// spl token program
     pub token_program: Program<'info, Token>,
+
+    pub ata_program: Program<'info, AssociatedToken>,
 
     /// CHECK: account constraints for the system program
     #[account(address = sysvar::instructions::id())]
