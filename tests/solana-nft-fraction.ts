@@ -6,6 +6,7 @@ import { Amount, Signer, TransactionBuilder, UmiError, generateRandomString, gen
 import {
   createV1,
   fetchDigitalAsset,
+  fetchDigitalAssetWithTokenByMint,
   findMetadataPda,
   getMplTokenMetadataProgramId,
   mintV1,
@@ -70,7 +71,7 @@ describe("solana-nft-fraction", () => {
   // });
 
   it("Creates nft and a fraction nft token", async () => {
-    const digitalAsset = await fetchDigitalAsset(umi, publicKey("7Y7pLihtSvwFVCkrXKCnwu5nv31gYK4uNmBENfjiT6wu"));
+    const digitalAsset = await fetchDigitalAssetWithTokenByMint(umi, publicKey("7Y7pLihtSvwFVCkrXKCnwu5nv31gYK4uNmBENfjiT6wu"));
 
     const [fractionPDA, fractionBump] = await anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from(anchor.utils.bytes.utf8.encode("fraction")), publicKeyBytes(digitalAsset.mint.publicKey)],
@@ -95,12 +96,11 @@ describe("solana-nft-fraction", () => {
 
     let userTokenAccount = await getAssociatedTokenAddress(tokenMint.publicKey, provider.wallet.publicKey);
 
-
     const ixAccounts = {
       user: provider.wallet.publicKey,
       fractionAccount: fractionPDA,
       nftVault: nftVault,
-      nftAccount: digitalAsset.publicKey,
+      nftAccount: digitalAsset.token.publicKey,
       nftMint: digitalAsset.mint.publicKey,
       nftMetadataAccount: digitalAsset.metadata.publicKey,
       fractionTokenMetadata: fractionMetadataAccount,

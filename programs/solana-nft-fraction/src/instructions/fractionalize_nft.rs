@@ -53,6 +53,7 @@ pub fn fractionalize_nft_handler(
     .sysvar_instructions(&ctx.accounts.sysvar_instructions)
     .spl_token_program(&ctx.accounts.token_program)
     .seller_fee_basis_points(0) // Fee to creators of this token
+    .decimals(0)
     .invoke_signed(&[&signer_seeds])?;
     msg!("Fraction token created");
 
@@ -83,10 +84,10 @@ pub fn fractionalize_nft_handler(
         .token(&ctx.accounts.nft_account)
         .token_owner(&ctx.accounts.user)
         .destination_token(&ctx.accounts.nft_vault.to_account_info())
-        .destination_owner(&ctx.accounts.nft_vault.to_account_info())
+        .destination_owner(&ctx.accounts.fraction_account.to_account_info())
         .mint(&ctx.accounts.nft_mint)
         .metadata(&ctx.accounts.nft_metadata_account)
-        .authority(&ctx.accounts.nft_vault.to_account_info())
+        .authority(&ctx.accounts.user)
         .payer(&ctx.accounts.user)
         .system_program(&ctx.accounts.system_program)
         .sysvar_instructions(&ctx.accounts.sysvar_instructions)
@@ -133,6 +134,7 @@ pub struct FractionalizeNft<'info> {
     
     /// The original account that holds the NFT token
     /// CHECK: Checking in the program
+    #[account(mut)]
     pub nft_account: AccountInfo<'info>,
 
     /// The NFT Mint Account
@@ -141,6 +143,7 @@ pub struct FractionalizeNft<'info> {
     pub nft_mint: AccountInfo<'info>,
 
     /// CHECK: Will be created by the fractionalize_nft_handler
+    #[account(mut)]
     pub nft_metadata_account: UncheckedAccount<'info>,
 
     /// Metadata account of the Fractionalized NFT Token.
