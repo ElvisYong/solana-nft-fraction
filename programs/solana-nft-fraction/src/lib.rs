@@ -5,7 +5,7 @@ mod state;
 
 use instructions::*;
 
-declare_id!("796GNwLYHzPyjcR5T6vhcge7RMfYr7kE8QDFBN23hdvm");
+declare_id!("2NuYbQqS8SBtzBt21t2BL1CtGtWfNegvAXj9gYktn9oP");
 
 #[program]
 pub mod solana_nft_fraction {

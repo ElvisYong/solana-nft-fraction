@@ -65,14 +65,9 @@ pub struct MintFraction<'info> {
     /// CHECK: Account checked in mint_nft_handler
     pub nft_mint: AccountInfo<'info>,
 
-    /// The account will be initialized if necessary.
-    ///
-    /// Must be a signer if:
-    ///   * the token mint account does not exist.
-    ///
     /// CHECK: account checked in CPI
     #[account(mut)]
-    pub token_mint: Signer<'info>,
+    pub token_mint: AccountInfo<'info>,
 
     /// Destination token account
     /// CHECK: Account checked in CPI

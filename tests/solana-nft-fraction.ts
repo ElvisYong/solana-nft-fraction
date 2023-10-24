@@ -93,13 +93,9 @@ describe("solana-nft-fraction", () => {
       fractionAccount: fractionPDA,
     }
 
-    console.log("nftAccount: ", digitalAsset.publicKey);
-    console.log("nftMint: ", digitalAsset.mint.publicKey);
-    console.log("nftMetadataAccount: ", digitalAsset.metadata.publicKey);
-
     let userTokenAccount = await getAssociatedTokenAddress(tokenMint.publicKey, provider.wallet.publicKey);
 
-    const ixAccounts = {
+    const fractionalizeNftAccounts = {
       user: provider.wallet.publicKey,
       fractionAccount: fractionPDA,
       nftVault: nftVault,
@@ -107,25 +103,44 @@ describe("solana-nft-fraction", () => {
       nftMint: digitalAsset.mint.publicKey,
       nftMetadataAccount: digitalAsset.metadata.publicKey,
       fractionTokenMetadata: fractionMetadataAccount,
-      userTokenAccount: userTokenAccount,
-      tokenMint: tokenMint.publicKey, 
+      tokenMint: tokenMint.publicKey,
       tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
-      ataProgram: ASSOCIATED_PROGRAM_ID,
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       systemProgram: SystemProgram.programId,
     }
 
     // This is good mainly for testing however we want to log the steps below
     let wallet = provider.wallet as anchor.Wallet;
-    let txid = await program.methods
-      .fractionalizeNft(ixArgs.shareAmount)
-      .accounts(ixAccounts)
-      .signers([wallet.payer, tokenMint])
-      .rpc({
-        skipPreflight: true,
-      });
 
+    let fractionalizeNftIx = await program.methods
+      .fractionalizeNft(ixArgs.shareAmount)
+      .accounts(fractionalizeNftAccounts)
+      .signers([wallet.payer, tokenMint])
+      .instruction();
+
+    const mintTokenAccounts = {
+      user: provider.wallet.publicKey,
+      fractionAccount: fractionPDA,
+      fractionTokenMetadata: fractionMetadataAccount,
+      nftMint: digitalAsset.mint.publicKey,
+      tokenMint: tokenMint.publicKey,
+      userTokenAccount: userTokenAccount,
+      tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
+      ataProgram: ASSOCIATED_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      systemProgram: SystemProgram.programId,
+    }
+
+    let txid = await program.methods.mintFraction(ixArgs.shareAmount)
+      .accounts(mintTokenAccounts)
+      .signers([wallet.payer, tokenMint])
+      .preInstructions([fractionalizeNftIx])
+      .rpc({
+        skipPreflight: true
+      });
+    
     // Log the tx id
     console.log("🎉 Transaction Succesfully Confirmed!");
     console.log("Transaction executed:", txid);
