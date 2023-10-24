@@ -32,7 +32,6 @@ pub fn fractionalize_nft_handler(
     msg!("NFT Mint: {}", ctx.accounts.nft_mint.key());
     msg!("NFT Metadata: {}", ctx.accounts.nft_metadata_account.to_account_info().key());
     msg!("Fraction Token Metadata: {}", ctx.accounts.fraction_token_metadata.to_account_info().key());
-    msg!("User Token Account: {}", ctx.accounts.user_token_account.to_account_info().key());
 
 
     msg!("Creating NFT Fraction Token...");
@@ -55,23 +54,6 @@ pub fn fractionalize_nft_handler(
     .invoke_signed(&[&signer_seeds])?;
     msg!("Fraction token created");
 
-    msg!("Minting fraction token...");
-    // Careful of authority, we might need to create a pda authority just for signing as program
-    // For now we will use the user as the authority
-    MintV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
-        .token(&ctx.accounts.user_token_account)
-        .token_owner(Some(&&ctx.accounts.user))
-        .metadata(&ctx.accounts.fraction_token_metadata)
-        .mint(&ctx.accounts.token_mint)
-        .authority(&ctx.accounts.user)
-        .payer(&ctx.accounts.user)
-        .system_program(&ctx.accounts.system_program)
-        .sysvar_instructions(&ctx.accounts.sysvar_instructions)
-        .spl_token_program(&ctx.accounts.token_program)
-        .spl_ata_program(&ctx.accounts.ata_program)
-        .amount(shares_amount)
-        .invoke_signed(&[&signer_seeds])?;
-    msg!("Fraction token minted to: {}", ctx.accounts.user_token_account.key());
 
     // msg!("Transfering NFT to vault");
     // Transfer NFT to vault
@@ -148,11 +130,6 @@ pub struct FractionalizeNft<'info> {
     #[account(mut)]
     pub fraction_token_metadata: UncheckedAccount<'info>,
 
-    /// Destination token account
-    /// CHECK: Account checked in CPI
-    #[account(mut)]
-    pub user_token_account: UncheckedAccount<'info>,
-
     /// The account will be initialized if necessary.
     ///
     /// Must be a signer if:
@@ -168,8 +145,6 @@ pub struct FractionalizeNft<'info> {
     
     /// spl token program
     pub token_program: Program<'info, Token>,
-
-    pub ata_program: Program<'info, AssociatedToken>,
 
     /// CHECK: account constraints for the system program
     #[account(address = sysvar::instructions::id())]
