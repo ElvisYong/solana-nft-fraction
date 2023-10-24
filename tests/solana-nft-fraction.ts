@@ -117,7 +117,9 @@ describe("solana-nft-fraction", () => {
       .fractionalizeNft(ixArgs.shareAmount)
       .accounts(ixAccounts)
       .signers([wallet.payer, tokenMint])
-      .rpc();
+      .rpc({
+        skipPreflight: true,
+      });
 
     // Log the tx id
     console.log("🎉 Transaction Succesfully Confirmed!");

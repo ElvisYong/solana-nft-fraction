@@ -16,16 +16,24 @@ pub fn fractionalize_nft_handler(
     fraction_account.shares_amount = shares_amount;
     msg!("Created fraction account");
 
-    let signer_seeds = [&[ctx.bumps.fraction_account], ctx.accounts.nft_mint.key.as_ref()];
+    let signer_seeds = [b"fraction", ctx.accounts.nft_mint.key.as_ref(), &[ctx.bumps.fraction_account], ];
     let nft_metadata_acc = Metadata::try_from(&ctx.accounts.nft_metadata_account.to_account_info())?;
+
+    // This is because the name and symbol are padded with null characters
+    // https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string
+    let token_name = format!("{}-fx", nft_metadata_acc.name.trim_matches(char::from(0)));
+    let token_symbol = format!("{}-fx", nft_metadata_acc.symbol.trim_matches(char::from(0)));
+
+    msg!("token_name: {}", token_name);
+    msg!("token_symbol: {}", token_symbol);
 
     msg!("Creating NFT Fraction Token");
     CreateV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
     .metadata(&ctx.accounts.fraction_token_metadata)
     .mint(&ctx.accounts.token_mint, true)
-    .name(format!("{} fractions", nft_metadata_acc.name))
+    .name(token_name)
     .uri(nft_metadata_acc.uri) // TODO: Add uri
-    .symbol(format!("{}-fraction", nft_metadata_acc.symbol))
+    .symbol(token_symbol)
     .payer(&ctx.accounts.user)
     .update_authority(&ctx.accounts.user, true)
     .authority(&ctx.accounts.user)
@@ -112,6 +120,7 @@ pub struct FractionalizeNft<'info> {
     /// This account must be uninitialized.
     ///
     /// CHECK: account checked in CPI
+    #[account(mut)]
     pub fraction_token_metadata: UncheckedAccount<'info>,
 
     /// The account will be initialized if necessary.
