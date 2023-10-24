@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { SolanaNftFraction } from "../target/types/solana_nft_fraction";
-import { Keypair, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { ComputeBudgetProgram, Keypair, PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram, Transaction, VersionedTransaction } from '@solana/web3.js';
 import { Amount, Signer, TransactionBuilder, UmiError, generateRandomString, generateSigner, percentAmount, publicKey, publicKeyBytes, signTransaction, signerPayer, transactionBuilder } from '@metaplex-foundation/umi'
 import {
   createV1,
@@ -95,7 +95,8 @@ describe("solana-nft-fraction", () => {
 
     let userTokenAccount = await getAssociatedTokenAddress(tokenMint.publicKey, provider.wallet.publicKey);
 
-    const fractionalizeNftAccounts = {
+
+    const ixAccounts = {
       user: provider.wallet.publicKey,
       fractionAccount: fractionPDA,
       nftVault: nftVault,
@@ -103,40 +104,25 @@ describe("solana-nft-fraction", () => {
       nftMint: digitalAsset.mint.publicKey,
       nftMetadataAccount: digitalAsset.metadata.publicKey,
       fractionTokenMetadata: fractionMetadataAccount,
-      tokenMint: tokenMint.publicKey,
+      userTokenAccount: userTokenAccount,
+      tokenMint: tokenMint.publicKey, 
       tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
+      ataProgram: ASSOCIATED_PROGRAM_ID,
       sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       systemProgram: SystemProgram.programId,
     }
-
-    // This is good mainly for testing however we want to log the steps below
     let wallet = provider.wallet as anchor.Wallet;
 
-    let fractionalizeNftIx = await program.methods
-      .fractionalizeNft(ixArgs.shareAmount)
-      .accounts(fractionalizeNftAccounts)
-      .signers([wallet.payer, tokenMint])
-      .instruction();
+    // We need to modify the compute units to be able to run the transaction
+    const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({ 
+      units: 1000000 
+    });
 
-    const mintTokenAccounts = {
-      user: provider.wallet.publicKey,
-      fractionAccount: fractionPDA,
-      fractionTokenMetadata: fractionMetadataAccount,
-      nftMint: digitalAsset.mint.publicKey,
-      tokenMint: tokenMint.publicKey,
-      userTokenAccount: userTokenAccount,
-      tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
-      ataProgram: ASSOCIATED_PROGRAM_ID,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-      systemProgram: SystemProgram.programId,
-    }
-
-    let txid = await program.methods.mintFraction(ixArgs.shareAmount)
-      .accounts(mintTokenAccounts)
+    let txid = await program.methods.fractionalizeNft(ixArgs.shareAmount)
+      .accounts(ixAccounts)
       .signers([wallet.payer, tokenMint])
-      .preInstructions([fractionalizeNftIx])
+      .preInstructions([modifyComputeUnits])
       .rpc({
         skipPreflight: true
       });

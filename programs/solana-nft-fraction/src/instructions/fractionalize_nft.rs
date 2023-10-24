@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::{token::{TokenAccount, Token}, metadata::Metadata as TokenMetadata};
-use mpl_token_metadata::{instructions::CreateV1CpiBuilder, types::TokenStandard, accounts::Metadata};
+use anchor_spl::{token::{TokenAccount, Token, self, Transfer}, metadata::Metadata as TokenMetadata, associated_token::AssociatedToken};
+use mpl_token_metadata::{instructions::{CreateV1CpiBuilder, TransferV1, TransferV1CpiBuilder, MintV1CpiBuilder}, types::TokenStandard, accounts::Metadata};
 
 use crate::state::fraction_details::FractionDetails;
 
@@ -32,6 +32,8 @@ pub fn fractionalize_nft_handler(
     msg!("NFT Mint: {}", ctx.accounts.nft_mint.key());
     msg!("NFT Metadata: {}", ctx.accounts.nft_metadata_account.to_account_info().key());
     msg!("Fraction Token Metadata: {}", ctx.accounts.fraction_token_metadata.to_account_info().key());
+    msg!("User Token Account: {}", ctx.accounts.user_token_account.to_account_info().key());
+    msg!("Token Mint: {}", ctx.accounts.token_mint.key());
 
 
     msg!("Creating NFT Fraction Token...");
@@ -54,27 +56,44 @@ pub fn fractionalize_nft_handler(
     .invoke_signed(&[&signer_seeds])?;
     msg!("Fraction token created");
 
+    msg!("Minting fraction token...");
+    // Careful of authority, we might need to create a pda authority just for signing as program
+    // For now we will use the user as the authority
+    MintV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
+        .token(&ctx.accounts.user_token_account)
+        .token_owner(Some(&&ctx.accounts.user))
+        .metadata(&ctx.accounts.fraction_token_metadata)
+        .mint(&ctx.accounts.token_mint)
+        .authority(&ctx.accounts.user)
+        .payer(&ctx.accounts.user)
+        .system_program(&ctx.accounts.system_program)
+        .sysvar_instructions(&ctx.accounts.sysvar_instructions)
+        .spl_token_program(&ctx.accounts.token_program)
+        .spl_ata_program(&ctx.accounts.ata_program)
+        .amount(shares_amount)
+        .invoke_signed(&[&signer_seeds])?;
+    msg!(
+        "Fraction token minted to: {}",
+        ctx.accounts.user_token_account.key()
+    );
 
-    // msg!("Transfering NFT to vault");
     // Transfer NFT to vault
-    // token::transfer(
-    //     CpiContext::new(
-    //         ctx.accounts.token_program.to_account_info(),
-    //         Transfer {
-    //             from: ctx.accounts.nft_account.to_account_info(),
-    //             to: ctx.accounts.nft_vault.to_account_info(),
-    //             authority: ctx.accounts.user.to_account_info(),
-    //         }
-    //     ),
-    //     1
-    // )?;
-    // msg!("NFT transferred to vault");
-
-    // Freeze the NFT in the vault
-
-    // Set the withdraw authority of the vault to the signer
-
-    // Send created spl token to the user
+    msg!("Transfering NFT to vault");
+    TransferV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
+        .token(&ctx.accounts.nft_account)
+        .token_owner(&ctx.accounts.user)
+        .destination_token(&ctx.accounts.nft_vault.to_account_info())
+        .destination_owner(&ctx.accounts.nft_vault.to_account_info())
+        .mint(&ctx.accounts.nft_mint)
+        .metadata(&ctx.accounts.nft_metadata_account)
+        .authority(&ctx.accounts.nft_vault.to_account_info())
+        .payer(&ctx.accounts.user)
+        .system_program(&ctx.accounts.system_program)
+        .sysvar_instructions(&ctx.accounts.sysvar_instructions)
+        .spl_token_program(&ctx.accounts.token_program)
+        .spl_ata_program(&ctx.accounts.ata_program)
+        .invoke_signed(&[&signer_seeds])?;
+    msg!("NFT transferred to vault");
 
     Ok(())
 }
@@ -118,6 +137,7 @@ pub struct FractionalizeNft<'info> {
 
     /// The NFT Mint Account
     /// CHECK: Account checked in fractionalize_nft_handler
+    #[account(mut)]
     pub nft_mint: AccountInfo<'info>,
 
     /// CHECK: Will be created by the fractionalize_nft_handler
@@ -129,6 +149,11 @@ pub struct FractionalizeNft<'info> {
     /// CHECK: account checked in CPI
     #[account(mut)]
     pub fraction_token_metadata: UncheckedAccount<'info>,
+
+    /// Destination token account
+    /// CHECK: Account checked in CPI
+    #[account(mut)]
+    pub user_token_account: UncheckedAccount<'info>,
 
     /// The account will be initialized if necessary.
     ///
@@ -145,6 +170,9 @@ pub struct FractionalizeNft<'info> {
     
     /// spl token program
     pub token_program: Program<'info, Token>,
+
+    /// spl ata program
+    pub ata_program: Program<'info, AssociatedToken>,
 
     /// CHECK: account constraints for the system program
     #[account(address = sysvar::instructions::id())]
