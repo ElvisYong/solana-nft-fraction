@@ -71,7 +71,8 @@ describe("solana-nft-fraction", () => {
   // });
 
   it("Creates nft and a fraction nft token", async () => {
-    const digitalAsset = await fetchDigitalAssetWithTokenByMint(umi, publicKey("7Y7pLihtSvwFVCkrXKCnwu5nv31gYK4uNmBENfjiT6wu"));
+    let nftMintStr = await createAndMintNft("MyFakeNft", "https://madlads.s3.us-west-2.amazonaws.com/json/5052.json")
+    const digitalAsset = await fetchDigitalAssetWithTokenByMint(umi, publicKey(nftMintStr));
 
     const [fractionPDA, fractionBump] = await anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from(anchor.utils.bytes.utf8.encode("fraction")), publicKeyBytes(digitalAsset.mint.publicKey)],
