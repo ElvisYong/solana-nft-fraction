@@ -14,4 +14,16 @@ pub mod solana_nft_fraction {
     pub fn fractionalize_nft(ctx: Context<FractionalizeNft>, share_amount: u64) -> Result<()> {
         fractionalize_nft_handler(ctx, share_amount)
     }
+
+    pub fn unfractionalize_nft(ctx: Context<UnfractionalizeNft>) -> Result<()> {
+        unfractionalize_nft_handler(ctx)
+    }
+}
+
+#[error_code]
+pub enum MyError {
+    #[msg("SPL token owner does not belong to the user")]
+    WrongOwner,
+    #[msg("Not enough shares to unfractionalize")]
+    NotEnoughShares,
 }

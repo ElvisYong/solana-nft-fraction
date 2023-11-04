@@ -4,6 +4,94 @@ use mpl_token_metadata::{instructions::{CreateV1CpiBuilder, TransferV1CpiBuilder
 
 use crate::state::fraction_details::FractionDetails;
 
+#[derive(Accounts)]
+pub struct FractionalizeNft<'info> {
+    /// The user who is fractionalizing the NFT
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    /// PDA that holds the fraction account details
+    /// We will use the nft_vault as the seed for the pda
+    #[account(
+        init_if_needed, 
+        space = FractionDetails::LEN,
+        payer = user, 
+        seeds = [
+            b"fraction", 
+            nft_vault.key().as_ref(),
+            ],
+        bump
+    )]
+    pub fraction_account: Account<'info, FractionDetails>,
+
+    /// The pda vault thats going to hold the NFT
+    /// Use the created token_mint as seed for the vault 
+    #[account(
+        init_if_needed, 
+        payer = user, 
+        token::mint = nft_mint,
+        token::authority = fraction_account,
+        seeds = [
+            b"nft_vault", 
+            token_mint.key().as_ref(),
+            ],
+        bump
+    )]
+    pub nft_vault: Account<'info, TokenAccount>,
+    
+    /// The original account that holds the NFT token
+    /// CHECK: Checking in the program
+    #[account(mut)]
+    pub nft_account: AccountInfo<'info>,
+
+    /// The NFT Mint Account
+    /// CHECK: Account checked in fractionalize_nft_handler
+    #[account(mut)]
+    pub nft_mint: AccountInfo<'info>,
+
+    /// CHECK: Will be created by the fractionalize_nft_handler
+    #[account(mut)]
+    pub nft_metadata_account: UncheckedAccount<'info>,
+
+    /// Metadata account of the Fractionalized NFT Token.
+    /// This account must be uninitialized.
+    ///
+    /// CHECK: account checked in CPI
+    #[account(mut)]
+    pub fraction_token_metadata: UncheckedAccount<'info>,
+
+    /// Destination token account
+    /// CHECK: Account checked in CPI
+    #[account(mut)]
+    pub user_token_account: UncheckedAccount<'info>,
+
+    /// The account will be initialized if necessary.
+    ///
+    /// Must be a signer if:
+    ///   * the token mint account does not exist.
+    ///
+    /// CHECK: account checked in CPI
+    #[account(mut)]
+    pub token_mint: Signer<'info>,
+
+    /// Token Metadata Program
+    /// CHECK: account checked in CPI
+    pub token_metadata_program: Program<'info, TokenMetadata>,
+    
+    /// spl token program
+    pub token_program: Program<'info, Token>,
+
+    /// spl ata program
+    pub ata_program: Program<'info, AssociatedToken>,
+
+    /// CHECK: account constraints for the system program
+    #[account(address = sysvar::instructions::id())]
+    pub sysvar_instructions: UncheckedAccount<'info>,
+
+    /// Solana native system program
+    pub system_program: Program<'info, System>,
+}
+
 pub fn fractionalize_nft_handler(
     ctx: Context<FractionalizeNft>,
     shares_amount: u64,
@@ -16,25 +104,14 @@ pub fn fractionalize_nft_handler(
     fraction_account.shares_amount = shares_amount;
     msg!("Created fraction account");
 
-    let signer_seeds = [b"fraction", ctx.accounts.nft_mint.key.as_ref(), &[ctx.bumps.fraction_account], ];
+    let nft_vault = ctx.accounts.nft_vault.key();
+    let signer_seeds = [b"fraction", nft_vault.as_ref(), &[ctx.bumps.fraction_account], ];
     let nft_metadata_acc = Metadata::try_from(&ctx.accounts.nft_metadata_account.to_account_info())?;
 
     // This is because the name and symbol are padded with null characters
     // https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string
     let token_name = format!("{}-fx", nft_metadata_acc.name.trim_matches(char::from(0)));
     let token_symbol = format!("{}-fx", nft_metadata_acc.symbol.trim_matches(char::from(0)));
-
-    // Print all the accounts
-    msg!("User: {}", ctx.accounts.user.key());
-    msg!("Fraction Account: {}", ctx.accounts.fraction_account.key());
-    msg!("NFT Vault: {}", ctx.accounts.nft_vault.key());
-    msg!("NFT Account: {}", ctx.accounts.nft_account.key());
-    msg!("NFT Mint: {}", ctx.accounts.nft_mint.key());
-    msg!("NFT Metadata: {}", ctx.accounts.nft_metadata_account.to_account_info().key());
-    msg!("Fraction Token Metadata: {}", ctx.accounts.fraction_token_metadata.to_account_info().key());
-    msg!("User Token Account: {}", ctx.accounts.user_token_account.to_account_info().key());
-    msg!("Token Mint: {}", ctx.accounts.token_mint.key());
-
 
     msg!("Creating NFT Fraction Token...");
     // Careful of authority, we might need to create a pda authority just for signing as program
@@ -97,90 +174,4 @@ pub fn fractionalize_nft_handler(
     msg!("NFT transferred to vault");
 
     Ok(())
-}
-
-#[derive(Accounts)]
-pub struct FractionalizeNft<'info> {
-    /// The user who is fractionalizing the NFT
-    #[account(mut)]
-    pub user: Signer<'info>,
-
-    /// PDA that holds the fraction account details
-    #[account(
-        init_if_needed, 
-        space = FractionDetails::LEN,
-        payer = user, 
-        seeds = [
-            b"fraction", 
-            nft_mint.key().as_ref(),
-            ],
-        bump
-    )]
-    pub fraction_account: Account<'info, FractionDetails>,
-
-    /// The pda vault thats going to hold the NFT
-    #[account(
-        init_if_needed, 
-        payer = user, 
-        token::mint = nft_mint,
-        token::authority = fraction_account,
-        seeds = [
-            b"nft_vault", 
-            nft_mint.key().as_ref(),
-            ],
-        bump
-    )]
-    pub nft_vault: Account<'info, TokenAccount>,
-    
-    /// The original account that holds the NFT token
-    /// CHECK: Checking in the program
-    #[account(mut)]
-    pub nft_account: AccountInfo<'info>,
-
-    /// The NFT Mint Account
-    /// CHECK: Account checked in fractionalize_nft_handler
-    #[account(mut)]
-    pub nft_mint: AccountInfo<'info>,
-
-    /// CHECK: Will be created by the fractionalize_nft_handler
-    #[account(mut)]
-    pub nft_metadata_account: UncheckedAccount<'info>,
-
-    /// Metadata account of the Fractionalized NFT Token.
-    /// This account must be uninitialized.
-    ///
-    /// CHECK: account checked in CPI
-    #[account(mut)]
-    pub fraction_token_metadata: UncheckedAccount<'info>,
-
-    /// Destination token account
-    /// CHECK: Account checked in CPI
-    #[account(mut)]
-    pub user_token_account: UncheckedAccount<'info>,
-
-    /// The account will be initialized if necessary.
-    ///
-    /// Must be a signer if:
-    ///   * the token mint account does not exist.
-    ///
-    /// CHECK: account checked in CPI
-    #[account(mut)]
-    pub token_mint: Signer<'info>,
-
-    /// Token Metadata Program
-    /// CHECK: account checked in CPI
-    pub token_metadata_program: Program<'info, TokenMetadata>,
-    
-    /// spl token program
-    pub token_program: Program<'info, Token>,
-
-    /// spl ata program
-    pub ata_program: Program<'info, AssociatedToken>,
-
-    /// CHECK: account constraints for the system program
-    #[account(address = sysvar::instructions::id())]
-    pub sysvar_instructions: UncheckedAccount<'info>,
-
-    /// Solana native system program
-    pub system_program: Program<'info, System>,
 }

@@ -66,25 +66,21 @@ const createAndMintNft = async (name: string, uri: string) => {
 }
 
 describe("solana-nft-fraction", () => {
-  // it("Create and mint NFT", async () => {
-  //   await createAndMintNft("TestNFT", "https://www.stockphotosecrets.com/wp-content/uploads/2018/08/hide-the-pain-stockphoto-840x560.jpg")
-  // });
-
   it("Creates nft and a fraction nft token", async () => {
     let nftMintStr = await createAndMintNft("MyFakeNft", "https://madlads.s3.us-west-2.amazonaws.com/json/5052.json")
     const digitalAsset = await fetchDigitalAssetWithTokenByMint(umi, publicKey(nftMintStr));
 
-    const [fractionPDA, fractionBump] = await anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from(anchor.utils.bytes.utf8.encode("fraction")), publicKeyBytes(digitalAsset.mint.publicKey)],
-      program.programId
-    );
+    const tokenMint = anchor.web3.Keypair.generate();
 
     const [nftVault, nftVaultBump] = await anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from(anchor.utils.bytes.utf8.encode("nft_vault")), publicKeyBytes(digitalAsset.mint.publicKey)],
+      [Buffer.from(anchor.utils.bytes.utf8.encode("nft_vault")), tokenMint.publicKey.toBuffer()],
       program.programId
     );
 
-    const tokenMint = anchor.web3.Keypair.generate();
+    const [fractionPDA, fractionBump] = await anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from(anchor.utils.bytes.utf8.encode("fraction")), nftVault.toBuffer()],
+      program.programId
+    );
 
     const [fractionMetadataAccount, fractionMetadataAccountBump] = findMetadataPda(umi, {
       mint: publicKey(tokenMint.publicKey)
@@ -106,7 +102,7 @@ describe("solana-nft-fraction", () => {
       nftMetadataAccount: digitalAsset.metadata.publicKey,
       fractionTokenMetadata: fractionMetadataAccount,
       userTokenAccount: userTokenAccount,
-      tokenMint: tokenMint.publicKey, 
+      tokenMint: tokenMint.publicKey,
       tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
       ataProgram: ASSOCIATED_PROGRAM_ID,
@@ -116,8 +112,8 @@ describe("solana-nft-fraction", () => {
     let wallet = provider.wallet as anchor.Wallet;
 
     // We need to modify the compute units to be able to run the transaction
-    const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({ 
-      units: 1000000 
+    const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
+      units: 1000000
     });
 
     let txid = await program.methods.fractionalizeNft(ixArgs.shareAmount)
@@ -127,7 +123,7 @@ describe("solana-nft-fraction", () => {
       .rpc({
         skipPreflight: true
       });
-    
+
     // Log the tx id
     console.log("🎉 Transaction Succesfully Confirmed!");
     console.log("Transaction executed:", txid);
