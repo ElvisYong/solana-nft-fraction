@@ -45,7 +45,11 @@ const createAndMintNft = async (name: string, uri: string) => {
     uri,
     sellerFeeBasisPoints: percentAmount(0),
     tokenStandard: TokenStandard.NonFungible,
-  }).sendAndConfirm(umi)
+  }).sendAndConfirm(umi, {
+    send: {
+      preflightCommitment: "confirmed",
+    },
+  })
 
   let createHash = base58.deserialize(createTx.signature);
   console.log("Created NFT metadata account", createHash)
@@ -57,7 +61,11 @@ const createAndMintNft = async (name: string, uri: string) => {
     amount: 1,
     tokenOwner: umi.identity.publicKey,
     tokenStandard: TokenStandard.NonFungible,
-  }).sendAndConfirm(umi)
+  }).sendAndConfirm(umi, {
+    send: {
+      preflightCommitment: "confirmed",
+    },
+  })
 
   let mint_hash = base58.deserialize(mintTx.signature);
   console.log("Minted NFT", mint_hash);
@@ -120,9 +128,7 @@ describe("solana-nft-fraction", () => {
       .accounts(ixAccounts)
       .signers([wallet.payer, tokenMint])
       .preInstructions([modifyComputeUnits])
-      .rpc({
-        skipPreflight: true
-      });
+      .rpc();
 
     // Log the tx id
     console.log("🎉 Transaction Succesfully Confirmed!");

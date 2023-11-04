@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::{token::{TokenAccount, Token}, metadata::Metadata as TokenMetadata, associated_token::AssociatedToken};
-use mpl_token_metadata::{instructions::{CreateV1CpiBuilder, TransferV1CpiBuilder, MintV1CpiBuilder, BurnV1CpiBuilder}, types::TokenStandard, accounts::Metadata};
+use mpl_token_metadata::instructions::{TransferV1CpiBuilder, BurnV1CpiBuilder};
 
 use crate::{state::fraction_details::FractionDetails, MyError};
 
