@@ -99,6 +99,7 @@ pub fn fractionalize_nft_handler(
     let fraction_account = &mut ctx.accounts.fraction_account;
     fraction_account.nft_vault_account = ctx.accounts.nft_vault.key();
     fraction_account.nft_mint = ctx.accounts.nft_mint.key();
+    fraction_account.nft_metadata = ctx.accounts.nft_metadata_account.key();
     fraction_account.spl_token_mint = ctx.accounts.token_mint.key();
     fraction_account.withdraw_authority = ctx.accounts.user.key();
     fraction_account.shares_amount = shares_amount;
